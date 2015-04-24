@@ -1,5 +1,5 @@
 CC     = g++ 
-OPT    = -funroll-loops -O # -fopenmp
+OPT    = -funroll-loops -O # -fopenmp -DREADWEIGHT
 
 
 
