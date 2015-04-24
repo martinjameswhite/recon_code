@@ -78,8 +78,9 @@ A particularly detailed discussion in given in \cite{Pad12,Bur14,Bur15}.
 The only new piece of the current code is the use of a multigrid method to
 solve for the displacement, $\vec{\Psi}$, given the density field.  Earlier
 codes used Fourier transform methods or linear algebra libraries.  Multigrid
-techniques provide an efficient alternative, requiring no external
-libraries and allowing very efficient parallelism with multiple threads.
+techniques provide an efficient alternative which can easily handle
+non-parallel lines of sight, require no external libraries and allow very
+efficient parallelism with multiple threads.
 
 \section{Procedure}
 
