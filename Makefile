@@ -1,4 +1,4 @@
-CC     = g++
+CC     = g++ 
 OPT    = -funroll-loops -O # -fopenmp
 
 
@@ -18,5 +18,17 @@ shift.o: shift.cpp global.h lcdm.h
 	$(CC) $(OPT) -c shift.cpp
 
 
+
+tex:	notes.tex notes.bib
+	pdflatex notes
+	bibtex   notes
+	pdflatex notes
+	pdflatex notes
+	rm -f    notes.toc
+
+
+all:	recon tex
+
+
 .(PHONY) clean:
-	rm -f *.o
+	rm -f notes.aux notes.log notes.out notes.toc *.o
