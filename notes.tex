@@ -1,0 +1,270 @@
+\documentclass[a4paper,11pt]{article}
+\pdfoutput=1 % if your are submitting a pdflatex (i.e. if you have
+             % images in pdf, png or jpg format)
+
+\usepackage{jcappub} % for details on the use of the package, please
+                     % see the JCAP-author-manual
+
+\usepackage[T1]{fontenc} % if needed
+
+\usepackage{amssymb, amsmath, epsfig, natbib}
+\def\apj{ApJ}
+\def\apjl{ApJL}
+\def\apjs{ApJS}
+\def\aj{AJ}
+\def\nat{Nature}
+\def\mnras{MNRAS}
+\def\physrep{physrep}
+\def\pasj{PASJ}
+\def\araa{{Ann.\ Rev.\ Astron.\& Astrophys.\ }}
+\def\aap{{A\&A}}
+\def\prd{PRD}
+\def\jcap{JCAP}
+
+\author[a,b]{Martin White}
+
+\affiliation[a]{Department of Physics, University of California,
+Berkeley, CA}
+\affiliation[b]{Lawrence Berkeley Laboratory, 1 Cyclotron Road,
+Berkeley, CA}
+
+\emailAdd{mjwhite@lbl.gov}
+
+
+\title{Reconstruction Code}
+
+\keywords{cosmological parameters from LSS -- baryon acoustic oscillations
+-- galaxy clustering}
+%\maketitle
+
+\abstract{
+We present a (C++) code to perform reconstruction on a galaxy catalog, to
+sharpen the baryon acoustic oscillation feature for measuring distances.
+The code implements the standard, lowest-order algorithm presented in
+\cite{Eis07} with periodic boundary conditions using a multigrid relaxation
+technique with a full multigrid V-cycle based on damped Jacobi iteration.
+Inputs are a catalog of objects and two random catalogs which serve to
+specify the selection function and act as the "shifted" fields. Output
+are `shifted' versions of the object and second random catalogs.
+}
+
+\begin{document}
+\maketitle
+\flushbottom
+
+\section{Introduction}
+\label{sec:intro}
+
+Sound waves traveling in the early Universe imprint a characteristic
+scale in the large-scale clustering of objects which can be used as a
+standard ruler to probe the expansion history of the Universe.  These
+so-called baryon acoustic oscillations are partially damped by
+non-linear evolution, and techniques to remove this damping are now
+routinely applied in the analysis of survey data and assumed in
+forecasts of future performance.  This process of `reconstruction'
+comes in several flavors, but the most widely used is that of
+\cite{Eis07} (which itself draws on earlier work going back decades).
+In this note we present a new implementation of this `standard'
+reconstruction code which uses an efficient multigrid solver to
+compute the displacements along which objects are moved in the process
+of reconstruction.
+
+There has been an extensive study of this `standard' reconstruction procedure
+in the literature, from both the analytic \cite{PWC09,NWP09,TasZal12,ZelRecon}
+and numerical \cite{Seo10,Pad12,Xu13,Bur14,Toj14,Var14,Bur15} perspectives.
+These works discuss the robustness of the algorithm, its performance and
+several issues of implementation.
+A particularly detailed discussion in given in \cite{Pad12,Bur14,Bur15}.
+
+\section{Procedure}
+
+The inputs are three files (containing RA, DEC and redshift) for the objects
+and two random catalogs, a linear bias factor ($b$), a growth parameter ($f$)
+and a Gaussian filtering scale ($R_f$).
+The first random catalog is used to define the selection function of the
+survey (and hence to compute the density field).  This should be large.  The
+second random catalog is used to generate the `shifted' field which is needed
+for computation of the post-reconstruction clustering signal.
+The files are read and angular coordinates are converted to 3D Cartesian
+coordinates using a $\Lambda$CDM distance-redshift relation.  The default
+value is $\Omega_m=0.3$ (set in {\tt recon.cpp}) and distances are computed
+in $h^{-1}$Mpc so that no value of $h$ needs to be specified.  The distance
+calculation includes only matter and a cosmological constant, there is no
+contribution from radiation or massive neutrinos.
+The outputs are the Cartesian coordinates of the `shifted' object and
+random catalogs, with the shift vectors computed using lowest order
+Lagrangian perturbation theory with the assumed (linear) bias, $b$, and
+rate-of-growth parameter, $f$.
+
+The code first estimates densities by depositing the objects and the randoms
+onto a regular Cartesian mesh using CIC interpolation in a box which encloses
+the random catalog entirely with a 25 per cent margin.
+The grid size is defined by the variable {\tt Ng} in {\tt global.h}.  It
+should be set such that the grid spacing is slightly smaller than the smoothing
+length [it would not be difficult to modify the code to do this automatically,
+but currently it is assumed that the physical set-up will not change
+frequently].  In principle any value of {\tt Ng} can be used but the code is
+more efficient if the prime factors are few and low numbers.  Powers of two or
+three times powers of two work well.
+
+A grid of $\delta=\rho_{\rm obj}/\rho_{\rm ran}-1$ is formed and regions
+with $\rho_{\rm ran}=0$ are set to $\delta=0$ ensuring padding at the
+mean density.
+At this stage the density constrast is divided
+by the (supplied) large-scale bias, $b$, to convert from object fluctuations
+to mass fluctuations.
+Note: as with most situations involving division by a gridded density field,
+it is important that there be enough randoms that the density field on the
+grid is well defined!  To help mitigate numerical errors associated with this
+problem, any grid point with too few randoms is assigned the mean density.
+The density contrast is then Gaussian smoothed by brute-force\footnote{Aside
+{}from the ascii I/O, this is the slowest step in the code.} convolution with
+a kernel $\exp[-(x/R_f)^2/2]$.
+
+We solve for the Zeldovich \cite{Zel70} displacements, $\vec{\Psi}$, using
+a standard multigrid technique employing a full multigrid V-cycle with
+damped Jacobi iteration (see below).
+Both the data and the randoms are then moved by $-\vec{\Psi}$ to form the
+so-called `displaced' and `shifted' fields.
+We choose to move both the objects and the randoms by an additional factor
+of $f\hat{r}\hat{r}\cdot\vec{\Psi}$ (i.e.~in the line-of-sight direction).
+An alternative, and common, choice is to enhance the shift in the line-of-sight
+direction only for the objects, and not the randoms
+(see \cite{ZelRecon} for further discussion and comparison).
+The Cartesian coordinates, with $h^{-1}$Mpc units, for the shifted and
+displaced fields (along with any weights) are then written to file.
+
+\section{Solving for $\vec{\Psi}$}
+\label{sec:equations}
+
+We need to extract the displacement field, $\vec{\Psi}$, from the observed,
+redshift-space density field.  In this section we present the formalism for
+an unbiased tracer of the density field -- for biased tracers the source,
+$\delta$, and the factor $f$ both\footnote{Note, in the literature this change
+of $f\to\beta=f/b$ is often misprinted.  The easiest way to derive the need
+for this is to consider a plane-parallel situation with $\hat{r}=\hat{z}$ and
+linear theory redshift space distortions in $k$-space:
+$\delta_k\to (b+f\mu_k^2)\delta_k$ and look at Eq.~(\ref{eqn:pde}).}
+need to be divided by $b$.
+Implementation details are given in the next section.
+
+Within the Zeldovich approximation \cite{Zel70}
+\begin{equation}
+  \vec{\nabla}\cdot\vec{\Psi} + f\vec{\nabla}\cdot
+  \left(\hat{r}\left\{\hat{r}\cdot\vec{\Psi}\right\}\right)
+  = -\delta
+\end{equation}
+To first order $\vec{\Psi}$ is irrotational, so we can write
+$\vec{\Psi}=\nabla\phi$ and hence
+\begin{equation}
+  \nabla^2\phi +
+  f\vec{\nabla}\cdot\left( \left[\hat{r}\cdot\vec{\nabla}\phi\right]
+  \hat{r}\right) = -\delta
+\label{eqn:pde}
+\end{equation}
+To simplify the equations slightly note that we can rewrite the term
+linear in $f$ as
+\begin{eqnarray}
+ \vec{\nabla}\cdot\left( \left[\hat{r}\cdot\vec{\nabla}\phi\right]\hat{r}\right)
+ &=& \sum_{ij}\hat{r}_i\hat{r}_j\left(\partial_i\partial_j\phi\right)
+  +  \frac{2}{r}\hat{r}_j\partial_j\phi \\
+ &\approx& \sum_{ij}\hat{r}_i\hat{r}_j\left(\partial_i\partial_j\phi\right)
+\label{eqn:fterm}
+\end{eqnarray}
+In the last line we have made a fixed line-of-sight, small-angle, or distant
+observer approximation which we shall use throughout.  This assumption
+should be revisited if the survey to be analyzed is at low redshift and
+subtends a wide angle.
+
+Discretizing the second derivatives to second order\footnote{We use a central
+difference scheme, which gives second-order accurate approximations.  These
+formulae are most easily derived by Taylor series expansion.} 
+we have, e.g.
+\begin{equation}
+  \partial_x^2\phi \approx \frac{\phi_{i-1,j,k}-2\phi_{i,j,k}+\phi_{i+1,j,k}}
+  {h^2}
+\end{equation}
+where $h$ is the mesh size.  We shall write this second-order accurate
+difference as $D_x^2$.  This leads to a 3D stencil for $\nabla^2$ with
+six $1$'s along the Cartesian directions and $-6$ in the center.
+
+If we approximate the radial direction appearing in Eq.~(\ref{eqn:pde})
+as that pointing to the central mesh point (i.e.~again neglect the variation
+of the line-of-sight direction in the derivative) then the term proportional
+to $f$ in the above becomes simply
+\begin{equation}
+  \sum_{i,j=1}^3 \hat{r}_i\hat{r}_j D_iD_j \phi
+\end{equation}
+The $i=j$ components of the central difference all involved $\phi_{i,j,k}$
+while the others will not.  Since $\hat{r}\cdot\hat{r}=1$ the coefficient
+of the central, $\phi_{i,j,k}$ term is thus replaced by $-6\to -6(1+f/3)$
+while the coefficients of the terms offset by $\pm 1$ become slightly more
+complex.
+
+Continuing to work to $2^{\rm nd}$ order the central differences appear as, e.g.
+\begin{equation}
+  \partial_x\partial_y\phi \approx \frac{1}{4h^2}\left(
+  \phi_{i+1,j+1,k}-\phi_{i+1,j-1,k}-\phi_{i-1,j+1,k}+\phi_{i-1,j-1,k}\right)
+\end{equation}
+which do not include $\phi_{i,j,k}$.
+Eq.~(\ref{eqn:fterm}), times $h^2$, then becomes
+\begin{eqnarray}
+  &-& 2\phi_{i,j,k} \nonumber \\
+  &+&\hat{r}_x^2 \left( \phi_{i-1,j,k}+\phi_{i+1,j,k} \right)
+   + \hat{r}_y^2 \left( \phi_{i,j-1,k}+\phi_{i,j+1,k} \right)
+   + \hat{r}_z^2 \left( \phi_{i,j,k-1}+\phi_{i,j,k+1} \right)   \nonumber \\
+  &+&\hat{r}_x\hat{r}_y\left( \phi_{i-1,j-1,k}+\phi_{i+1,j+1,k}
+                             -\phi_{i+1,j-1,k}-\phi_{i-1,j+1,k} \right)/2
+      \nonumber \\
+  &+&\hat{r}_x\hat{r}_z\left( \phi_{i-1,j,k-1}+\phi_{i+1,j,k+1}
+                             -\phi_{i+1,j,k-1}-\phi_{i-1,j,k+1} \right)/2
+      \nonumber \\
+  &+&\hat{r}_y\hat{r}_z\left( \phi_{i,j-1,k-1}+\phi_{i,j+1,k+1}
+                             -\phi_{i,j+1,k-1}-\phi_{i,j-1,k+1} \right)/2
+\end{eqnarray}
+Note, if we take the line-of-sight direction to be fixed throughout the grid,
+e.g.~$\hat{r}\simeq\hat{z}$, then $\hat{r}_x=\hat{r}_y=0$ and $\hat{r}_z=1$
+so the sum of the $\nabla^2$ and $f$ terms reduces to increasing the $D_z^2$
+central difference by a factor of $1+f$ while leaving all the others unchanged,
+as expected.
+
+Having discretized the equations, we can now rewrite them in a form
+conducive to relaxation
+\begin{eqnarray}
+  (6+2f)\ \phi_{i,j,k} &=& h^2 \delta_{i,j,k} \nonumber \\
+  &+&(1+f\hat{r}_x^2)\left( \phi_{i-1,j,k}+\phi_{i+1,j,k} \right) \nonumber \\
+  &+&(1+f\hat{r}_y^2)\left( \phi_{i,j-1,k}+\phi_{i,j+1,k} \right) \nonumber \\
+  &+&(1+f\hat{r}_z^2)\left( \phi_{i,j,k-1}+\phi_{i,j,k+1} \right) \nonumber \\
+  &+&f\hat{r}_x\hat{r}_y\left( \phi_{i-1,j-1,k}+\phi_{i+1,j+1,k}
+                              -\phi_{i+1,j-1,k}-\phi_{i-1,j+1,k} \right)/2
+      \nonumber \\
+  &+&f\hat{r}_x\hat{r}_z\left( \phi_{i-1,j,k-1}+\phi_{i+1,j,k+1}
+                              -\phi_{i+1,j,k-1}-\phi_{i-1,j,k+1} \right)/2
+      \nonumber \\
+  &+&f\hat{r}_y\hat{r}_z\left( \phi_{i,j-1,k-1}+\phi_{i,j+1,k+1}
+                              -\phi_{i,j+1,k-1}-\phi_{i,j-1,k+1} \right)/2
+\end{eqnarray}
+We solve this system using a very standard multigrid technique, using a full
+multigrid with a V-cycle based upon damped Jacobi iteration.
+We implementated the algorithm using the simplest V-cycle.
+The number of V-cycle calls is defined by the {\tt Niter} parameter in
+the routine {\tt fmg} in {\tt multigrid.cpp} and the number of Jacobi
+steps per level is set by the {\tt Nit} parameter in {\tt jacobi} in
+{\tt multigrid.cpp}.
+Intermesh transfers are done using a standard stencil, with full-weighting
+for the restriction operator.
+The code is {\tt OpenMP} parallel, assuming shared memory.
+
+Having obtained $\phi$ on the grid we compute $\vec{\Psi}$ using another
+second-order, central difference approximation, e.g.
+\begin{equation}
+  \Psi_x = \nabla_x\phi \approx \frac{\phi_{i+1,j,k}-\phi_{i-1,j,k}}{2h}
+\end{equation}
+and similarly for $\nabla_y$ and $\nabla_z$.  The shift vectors at the
+positions of the objects and randoms are then obtained from CIC interpolation
+and the positions moved by $\vec{r}\to\vec{r}-\mathbf{R}\vec{\Psi}$ where
+$R_{ij}=\delta_{ij}+f\hat{r}_i\hat{r}_j$ is a redshift-space operator.
+
+\bibliographystyle{JHEP}
+\bibliography{notes}
+\end{document}
