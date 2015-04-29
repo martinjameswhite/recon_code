@@ -126,8 +126,9 @@ it is important that there be enough randoms that the density field on the
 grid is well defined!  To help mitigate numerical errors associated with this
 problem, any grid point with too few randoms is assigned the mean density.
 The density contrast is then Gaussian smoothed by brute-force\footnote{Aside
-{}from the ascii I/O, this is the slowest step in the code.} convolution with
-a kernel $\exp[-(x/R_f)^2/2]$.
+{}from the ascii I/O, this is the slowest step in the code -- for this reason
+we have also added an option to smooth the density field using FFTs if you
+have the FFTW library (v3).} convolution with a kernel $\exp[-(x/R_f)^2/2]$.
 
 We solve for the Zeldovich \cite{Zel70} displacements, $\vec{\Psi}$, using
 a standard multigrid technique employing a full multigrid V-cycle with
