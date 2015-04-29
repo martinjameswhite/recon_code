@@ -8,6 +8,7 @@
 #include	<vector>
 #include	<exception>
 
+#include	"omp.h"
 #include	"fftw3.h"
 #include	"global.h"
 
@@ -28,6 +29,8 @@ void	fft_smooth(std::vector<float>& delta, const int N, const float Rf) {
 #pragma omp parallel for shared(delta,vi)
   for (int nn=0; nn<delta.size(); ++nn) vi[nn]=delta[nn];
   // Generate the FFTW plan files.
+  fftw_init_threads();
+  fftw_plan_with_nthreads(omp_get_max_threads());
   fftw_plan fplan = fftw_plan_dft_r2c_3d(N,N,N,&vi[0],&vo[0],FFTW_ESTIMATE);
   fftw_plan iplan = fftw_plan_dft_c2r_3d(N,N,N,&vo[0],&vi[0],FFTW_ESTIMATE);
   fftw_execute(fplan);
@@ -53,5 +56,6 @@ void	fft_smooth(std::vector<float>& delta, const int N, const float Rf) {
   for (int nn=0; nn<delta.size(); ++nn) delta[nn]=vi[nn]/N/N/N;
   fftw_destroy_plan(fplan);
   fftw_destroy_plan(iplan);
+  fftw_cleanup_threads();
 }
 #endif

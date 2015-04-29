@@ -4,7 +4,7 @@ OPT    = -funroll-loops -O -fopenmp -DSKIPRAW # -DREADWEIGHT
 
 
 recon: recon.o io.o multigrid.o grid.o shift.o smooth.o
-	$(CC) $(OPT) recon.o io.o multigrid.o grid.o shift.o smooth.o -o recon -lfftw3 -lm
+	$(CC) $(OPT) recon.o io.o multigrid.o grid.o shift.o smooth.o -o recon -lfftw3_omp -lfftw3 -lm
 
 recon.o: recon.cpp global.h lcdm.h multigrid.h
 	$(CC) $(OPT) -c recon.cpp
