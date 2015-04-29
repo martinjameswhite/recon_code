@@ -111,8 +111,10 @@ int	main(int argc, char **argv)
            <<" and filter scale is "<<Rf<<" Mpc/h."
            <<std::endl;
 
+#ifndef	SKIPRAW
   write_data(D ,"data_raw.xyzw");
   write_data(R2,"rand_raw.xyzw");
+#endif
   
   // Make the density (contrast) grid and solve for the
   // displacement potential, phi.
