@@ -9,7 +9,9 @@
 
 #include	"global.h"
 
-
+#ifndef	BRUTEFORCESMOOTH
+extern void fft_smooth(std::vector<float>& delta, const int N, const float Rf);
+#endif
 
 
 void	enclosing_box(const std::vector<struct particle>& R) {
@@ -221,7 +223,11 @@ std::vector<float> make_grid(const std::vector<struct particle>& D,
   print_stats("# Pre-smoothing:  ",delta);
   // Smooth this grid--pass smoothing length in box units.
   // This is the most time consuming routine by far (apart from ascii I/O).
+#ifdef	BRUTEFORCESMOOTH
   smooth(delta,Ng,Rf/box.L);
+#else
+  fft_smooth(delta,Ng,Rf/box.L);
+#endif
   // At this stage also remove the mean, so the source passed to the
   // multigrid routine is genuinely mean 0.  So as to not disturb the
   // padding regions, we only compute and subtract the mean for the

@@ -1,10 +1,10 @@
-CC     = g++ 
-OPT    = -funroll-loops -O # -fopenmp -DREADWEIGHT
+CC     = CC
+OPT    = -funroll-loops -O -fopenmp -DSKIPRAW # -DREADWEIGHT
 
 
 
-recon: recon.o io.o multigrid.o grid.o shift.o
-	$(CC) $(OPT) recon.o io.o multigrid.o grid.o shift.o -o recon -lm
+recon: recon.o io.o multigrid.o grid.o shift.o smooth.o
+	$(CC) $(OPT) recon.o io.o multigrid.o grid.o shift.o smooth.o -o recon -lfftw3 -lm
 
 recon.o: recon.cpp global.h lcdm.h multigrid.h
 	$(CC) $(OPT) -c recon.cpp
@@ -16,6 +16,8 @@ grid.o: grid.cpp global.h lcdm.h
 	$(CC) $(OPT) -c grid.cpp
 shift.o: shift.cpp global.h lcdm.h
 	$(CC) $(OPT) -c shift.cpp
+smooth.o: smooth.cpp global.h
+	$(CC) $(OPT) -I$(FFTW_INC) -L$(FFTW_DIR) -c smooth.cpp
 
 
 
