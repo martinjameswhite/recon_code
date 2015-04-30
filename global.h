@@ -10,7 +10,7 @@
 
 
 // The size of the grid is Ng^3.
-const	int Ng=1024;
+const	int Ng=512;
 
 
 struct particle {

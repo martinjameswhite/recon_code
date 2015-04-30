@@ -32,7 +32,7 @@ void	enclosing_box(const std::vector<struct particle>& R) {
   }
   // Now use this to define a center and a length, allowing room
   // for padding.
-  const float padfactor=1.25;
+  const float padfactor=1.5;
   box.L=-1;
   for (int idim=0; idim<3; ++idim) {
     box.ctr[idim] = (box.min[idim]+box.max[idim])/2;
