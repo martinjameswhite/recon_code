@@ -194,8 +194,10 @@ std::vector<float> make_grid(const std::vector<struct particle>& D,
   std::vector<float> dg=cic_assign(D);
   std::vector<float> rg=cic_assign(R);
   // We remove any points which have too few randoms for a decent
-  // density estimate.
-  const float RanMin=0.5;
+  // density estimate -- this is "fishy", but it tames some of the
+  // worst swings due to 1/eps factors.  Better would be an interpolation
+  // or a pre-smoothing (or many more randoms).
+  const float RanMin=0.75;
   int count=0;
   for (int nn=0; nn<rg.size(); ++nn)
     if (rg[nn]>0 && rg[nn]<RanMin) {
@@ -220,14 +222,6 @@ std::vector<float> make_grid(const std::vector<struct particle>& D,
         else
           delta[ii] = 0;
       }
-  print_stats("# Pre-smoothing:  ",delta);
-  // Smooth this grid--pass smoothing length in box units.
-  // This is the most time consuming routine by far (apart from ascii I/O).
-#ifdef	BRUTEFORCESMOOTH
-  smooth(delta,Ng,Rf/box.L);
-#else
-  fft_smooth(delta,Ng,Rf/box.L);
-#endif
   // At this stage also remove the mean, so the source passed to the
   // multigrid routine is genuinely mean 0.  So as to not disturb the
   // padding regions, we only compute and subtract the mean for the
@@ -242,6 +236,15 @@ std::vector<float> make_grid(const std::vector<struct particle>& D,
   for (int nn=0; nn<delta.size(); ++nn)
     if (delta[nn]!=0)
       delta[nn] -= avg;
+  print_stats("# Pre-smoothing:  ",delta);
+  // Smooth this grid--pass smoothing length in box units.
+  // This is the most time consuming routine by far (apart from ascii I/O)
+  // so we also provide an FFT-based option which is much faster.
+#ifdef	BRUTEFORCESMOOTH
+  smooth(delta,Ng,Rf/box.L);
+#else
+  fft_smooth(delta,Ng,Rf/box.L);
+#endif
   print_stats("# Post-smoothing: ",delta);
   return(delta);
 }

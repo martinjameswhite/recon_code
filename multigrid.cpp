@@ -90,11 +90,11 @@ void MultiGrid::jacobi(std::vector<float>& v,
 // See notes for more details.
   std::vector<float> jac;
   try{jac.resize(N*N*N);}catch(std::exception& e) {myexception(e);}
-  const float w  = 1./2.;	// The "damping" factor.
+  const float w  = 0.4;	// The "damping" factor.
   const float h  = 1.0/N;
   const float h2 = h*h;
   const float len= box.L*h;
-  const int   Nit= 8;
+  const int   Nit= 5;
   for (int iter=0; iter<Nit; ++iter) {
 #pragma omp parallel for shared(v,f,jac)
     for (int ix=0; ix<N; ++ix) {
@@ -365,7 +365,7 @@ std::vector<float> MultiGrid::fmg(const std::vector<float>& f1h,
     v1h.resize(N*N*N);
     std::fill(v1h.begin(),v1h.end(),0.0);
   }
-  const int Niter=5;
+  const int Niter=6;
   for (int iter=0; iter<Niter; ++iter) {
     vcycle(v1h,f1h,N);
   }
