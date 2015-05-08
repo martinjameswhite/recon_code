@@ -176,17 +176,12 @@ $\vec{\Psi}=\nabla\phi$ and hence
 \end{equation}
 To simplify the equations slightly note that we can rewrite the term
 linear in $f$ as
-\begin{eqnarray}
+\begin{equation}
  \vec{\nabla}\cdot\left( \left[\hat{r}\cdot\vec{\nabla}\phi\right]\hat{r}\right)
- &=& \sum_{ij}\hat{r}_i\hat{r}_j\left(\partial_i\partial_j\phi\right)
-  +  \frac{2}{r}\hat{r}_j\partial_j\phi \\
- &\approx& \sum_{ij}\hat{r}_i\hat{r}_j\left(\partial_i\partial_j\phi\right)
+ = \sum_{ij}\hat{r}_i\hat{r}_j\left(\partial_i\partial_j\phi\right)
+  +  \frac{2}{r}\hat{r}_j\partial_j\phi
 \label{eqn:fterm}
-\end{eqnarray}
-In the last line we have made a fixed line-of-sight, small-angle, or distant
-observer approximation which we shall use throughout.  This assumption
-should be revisited if the survey to be analyzed is at low redshift and
-subtends a wide angle.
+\end{equation}
 
 Discretizing the second derivatives to second order\footnote{We use a central
 difference scheme, which gives second-order accurate approximations.  These
@@ -206,19 +201,26 @@ of the line-of-sight direction in the derivative) then the term proportional
 to $f$ in the above becomes simply
 \begin{equation}
   \sum_{i,j=1}^3 \hat{r}_i\hat{r}_j D_iD_j \phi
+  + \frac{2}{r}\sum_{j=1}^3 \hat{r}_jD_j\phi
 \label{eqn:ffinite}
 \end{equation}
+Consider the second derivative term.
 The $i=j$ components of the central difference all involved $\phi_{i,j,k}$
 while the others will not.  Since $\hat{r}\cdot\hat{r}=1$ the coefficient
 of the central, $\phi_{i,j,k}$ term is thus replaced by $-6\to -6(1+f/3)$
 while the coefficients of the terms offset by $\pm 1$ become slightly more
-complex.
+complex.  If we use a central difference for the $1^{\rm st}$ derivative,
+it is also independent of $\phi_{i,j,k}$.
 
 Continuing to work to $2^{\rm nd}$ order the central differences appear as, e.g.
 \begin{equation}
   \partial_x\partial_y\phi \approx
   \frac{\phi_{i+1,j+1,k}-\phi_{i+1,j-1,k}-\phi_{i-1,j+1,k}+\phi_{i-1,j-1,k}}
        {4h^2}
+\end{equation}
+and
+\begin{equation}
+  \partial_x\phi \approx \frac{\phi_{i+1,j,k}-\phi_{i-1,j,k}}{2h}
 \end{equation}
 which do not include $\phi_{i,j,k}$.
 Eq.~(\ref{eqn:ffinite}), times $h^2$, then becomes
@@ -235,12 +237,18 @@ Eq.~(\ref{eqn:ffinite}), times $h^2$, then becomes
       \nonumber \\
   &+&\hat{r}_y\hat{r}_z\left( \phi_{i,j-1,k-1}+\phi_{i,j+1,k+1}
                              -\phi_{i,j+1,k-1}-\phi_{i,j-1,k+1} \right)/2
+      \nonumber \\
+  &+&\theta\hat{r}_x\left(\phi_{i+1,j,k}-\phi_{i-1,j,k}\right)
+   + \theta\hat{r}_y\left(\phi_{i,j+1,k}-\phi_{i,j-1,k}\right)
+   + \theta\hat{r}_z\left(\phi_{i,j,k+1}-\phi_{i,j,k-1}\right)
 \end{eqnarray}
+where we have written $\theta=h/r$ and in practice inclusion of these
+$\theta$-terms makes little difference to most problems.
 Note, if we take the line-of-sight direction to be fixed throughout the grid,
-e.g.~$\hat{r}\simeq\hat{z}$, then $\hat{r}_x=\hat{r}_y=0$ and $\hat{r}_z=1$
-so the sum of the $\nabla^2$ and $f$ terms reduces to increasing the $D_z^2$
-central difference by a factor of $1+f$ while leaving all the others unchanged,
-as expected.
+e.g.~$\hat{r}\simeq\hat{z}$ and take $\theta=0$, then $\hat{r}_x=\hat{r}_y=0$
+and $\hat{r}_z=1$ so the sum of the $\nabla^2$ and $f$ terms reduces to
+increasing the $D_z^2$ central difference by a factor of $1+f$ while leaving
+all the others unchanged, as expected.
 
 Having discretized the equations, we can now rewrite them in a form
 conducive to relaxation
@@ -249,6 +257,9 @@ conducive to relaxation
   &+&(1+f\hat{r}_x^2)\left( \phi_{i-1,j,k}+\phi_{i+1,j,k} \right) \nonumber \\
   &+&(1+f\hat{r}_y^2)\left( \phi_{i,j-1,k}+\phi_{i,j+1,k} \right) \nonumber \\
   &+&(1+f\hat{r}_z^2)\left( \phi_{i,j,k-1}+\phi_{i,j,k+1} \right) \nonumber \\
+  &+&\theta\hat{r}_x\left(\phi_{i+1,j,k}-\phi_{i-1,j,k}\right)
+   + \theta\hat{r}_y\left(\phi_{i,j+1,k}-\phi_{i,j-1,k}\right)
+   + \theta\hat{r}_z\left(\phi_{i,j,k+1}-\phi_{i,j,k-1}\right) \nonumber \\
   &+&f\hat{r}_x\hat{r}_y\left( \phi_{i-1,j-1,k}+\phi_{i+1,j+1,k}
                               -\phi_{i+1,j-1,k}-\phi_{i-1,j+1,k} \right)/2
       \nonumber \\
@@ -269,8 +280,8 @@ Intermesh transfers are done using a standard stencil, with full-weighting
 for the restriction operator.
 The code is {\tt OpenMP} parallel, assuming shared memory.
 
-Having obtained $\phi$ on the grid we compute $\vec{\Psi}$ using another
-second-order, central difference approximation, e.g.
+Having obtained $\phi$ on the grid we compute $\vec{\Psi}$ using the
+second-order, central difference approximation as above, e.g.
 \begin{equation}
   \Psi_x = \nabla_x\phi \approx \frac{\phi_{i+1,j,k}-\phi_{i-1,j,k}}{2h}
 \end{equation}
