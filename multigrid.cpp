@@ -120,7 +120,10 @@ void MultiGrid::jacobi(std::vector<float>& v,
                     (g*rx*rz/2)*(v[N*N*ixp+N*iy +izp]+v[N*N*ixm+N*iy +izm]
                                 -v[N*N*ixm+N*iy +izp]-v[N*N*ixp+N*iy +izm])+
                     (g*ry*rz/2)*(v[N*N*ix +N*iyp+izp]+v[N*N*ix +N*iym+izm]
-                                -v[N*N*ix +N*iym+izp]-v[N*N*ix +N*iyp+izm]);
+                                -v[N*N*ix +N*iym+izp]-v[N*N*ix +N*iyp+izm])+
+                    (g*rx*h)   *(v[N*N*ixp+N*iy +iz ]-v[N*N*ixm+N*iy +iz ])+
+                    (g*ry*h)   *(v[N*N*ix +N*iyp+iz ]-v[N*N*ix +N*iym+iz ])+
+                    (g*rz*h)   *(v[N*N*ix +N*iy +izp]-v[N*N*ix +N*iy +izm]);
           jac[ii]/= 6+2*beta;
         }
       }
@@ -170,7 +173,10 @@ std::vector<float> MultiGrid::residual(const std::vector<float>& v,
                 (g*rx*rz/2)*(v[N*N*ixp+N*iy +izp]+v[N*N*ixm+N*iy +izm]
                             -v[N*N*ixm+N*iy +izp]-v[N*N*ixp+N*iy +izm])-
                 (g*ry*rz/2)*(v[N*N*ix +N*iyp+izp]+v[N*N*ix +N*iym+izm]
-                            -v[N*N*ix +N*iym+izp]-v[N*N*ix +N*iyp+izm]);
+                            -v[N*N*ix +N*iym+izp]-v[N*N*ix +N*iyp+izm])-
+                (g*rx*h)   *(v[N*N*ixp+N*iy +iz ]-v[N*N*ixm+N*iy +iz ])-
+                (g*ry*h)   *(v[N*N*ix +N*iyp+iz ]-v[N*N*ix +N*iym+iz ])-
+                (g*rz*h)   *(v[N*N*ix +N*iy +izp]-v[N*N*ix +N*iy +izm]);
       }
     }
   }
