@@ -73,7 +73,7 @@ void	shift_obj(std::vector<struct particle>& P,
     float ry = box.ctr[1]+box.L*(P[nn].pos[1]-0.5);
     float rz = box.ctr[2]+box.L*(P[nn].pos[2]-0.5);
     float r2 = rx*rx+ry*ry+rz*rz;
-    float pr = beta*(px*rx+py*ry+pz*rz);
+    float pr = beta*bias*(px*rx+py*ry+pz*rz);
     P[nn].pos[0] -= px + pr*rx/r2;
     P[nn].pos[1] -= py + pr*ry/r2;
     P[nn].pos[2] -= pz + pr*rz/r2;
